@@ -1,0 +1,20 @@
+{
+  // SHIVNEE on Cloudflare Workers: static web app + one Durable Object relay.
+  // Deploy:  npm run deploy      Local Cloudflare runtime:  npm run cf:dev
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shivnee",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // these paths must reach the Worker instead of the static files
+    "run_worker_first": ["/ws", "/health"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "RELAY", "class_name": "Relay" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Relay"] }],
+  "observability": { "enabled": true }
+}
