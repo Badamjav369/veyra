@@ -1,5 +1,5 @@
 {
-  "name": "shivnee-e2ee-chat",
+  "name": "veyra-e2ee-chat",
   "private": true,
   "version": "0.1.0",
   "description": "SHIVNEE \u2014 quiet, end-to-end encrypted chat (React client + Node relay)",

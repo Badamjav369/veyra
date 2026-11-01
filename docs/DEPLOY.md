@@ -57,7 +57,7 @@ npx wrangler login      # хөтөч нээгдэж Cloudflare-д зөвшөөр
 npm run deploy          # typecheck + build + wrangler deploy
 ```
 
-Дууссаны дараа `https://shivnee.<таны-subdomain>.workers.dev` гэсэн хаяг гарна. Шалгах:
+Дууссаны дараа `https://veyra.<таны-subdomain>.workers.dev` гэсэн хаяг гарна. Шалгах:
 
 * `https://…workers.dev/health` хаягаар `{"ok":true,...}` гарах ёстой.
 * Аппыг нээгээд шинэ identity үүсгэнэ. Апп нь ижил домэйн дээрх `/ws`-д автоматаар холбогдоно.
@@ -71,7 +71,7 @@ npm run deploy          # typecheck + build + wrangler deploy
    * Deploy command: `npx wrangler deploy`
 4. Үүнээс хойш `main` руу push хийх бүрт автоматаар шинэчлэгдэнэ.
 
-> Worker-ийн нэр `wrangler.jsonc` дахь `"name": "shivnee"`-тэй ижил байх ёстой.
+> Worker-ийн нэр `wrangler.jsonc` дахь `"name": "veyra"`-тэй ижил байх ёстой.
 
 ## 5. Өөрийн домэйн (заавал биш)
 
@@ -109,7 +109,7 @@ Cloudflare ашиглахгүй бол `npm start` нь бүгдийг нэг No
    ```
 2. Цэвэрлэх үедээ (PowerShell):
    ```powershell
-   curl.exe -X POST -H "Authorization: Bearer ТАНЫ-ТОКЕН" https://shivnee.badamjav070.workers.dev/admin/reset
+   curl.exe -X POST -H "Authorization: Bearer ТАНЫ-ТОКЕН" https://veyra.badamjav070.workers.dev/admin/reset
    ```
    `{"ok":true,"reset":true}` гарвал болсон. `/health` хаяг `"users":0` гэж харуулна.
 3. **Хөтчүүдээ ч цэвэрлэ.** Хөтөч дээр үлдсэн хуучин бүртгэл серверт холбогдоход өөрийгөө дахин

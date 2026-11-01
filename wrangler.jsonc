@@ -2,7 +2,7 @@
   // SHIVNEE on Cloudflare Workers: static web app + one Durable Object relay.
   // Deploy:  npm run deploy      Local Cloudflare runtime:  npm run cf:dev
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "shivnee",
+  "name": "veyra",
   "main": "cloudflare/worker.ts",
   "compatibility_date": "2026-10-01",
   "assets": {
