@@ -56,6 +56,8 @@ function PassField({
         aria-invalid={invalid || undefined}
         autoFocus={autoFocus}
         spellCheck={false}
+        autoCapitalize="none"
+        autoCorrect="off"
       />
       <button type="button" className="icon-btn" aria-label={shown ? t('auth.hide') : t('auth.show')} aria-pressed={shown} onClick={() => setShown(!shown)}>
         {shown ? <EyeOffIcon /> : <EyeIcon />}
@@ -270,7 +272,7 @@ export function AuthScreen({ onReady, signedOut }: Props) {
           <circle className="spin" cx="88" cy="88" r="72" stroke="#2A3539" strokeDasharray="1 7" strokeLinecap="round" />
           <g transform="translate(40 40)">
             <rect width="96" height="96" rx="28" fill="#161C1F" stroke="#2A3539" />
-            <svg x="20" y="20" width="56" height="56" viewBox="0 0 64 64">
+            <svg x="8" y="8" width="80" height="80" viewBox="0 0 64 64">
               <LogoShapes id="veyra-emblem" />
             </svg>
           </g>

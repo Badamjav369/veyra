@@ -1,22 +1,22 @@
 import { useId } from 'react';
 
 /**
- * VEYRA mark: a "V" folded like paper — a sealed note, lit on one side and shaded on the other.
- * Drawn on a 64×64 grid so it stays crisp from 16px favicons up to large sizes.
+ * VEYRA mark: a chat bubble whose tail is a "V", with a padlock inside — private chat.
+ * Colours follow the app accent (Settings → Appearance), so the mark always matches the site.
  */
 export function LogoShapes({ id }: { id: string }) {
   return (
     <>
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" style={{ stopColor: 'var(--accent)' }} />
-          <stop offset="0.55" stopColor="#7fc8d9" />
-          <stop offset="1" stopColor="#b9a2f0" />
+          <stop offset="0" stopColor="#8fd9b6" style={{ stopColor: 'var(--accent)' }} />
+          <stop offset="1" stopColor="#3f8f78" style={{ stopColor: 'color-mix(in srgb, var(--accent) 62%, #0d1012)' }} />
         </linearGradient>
       </defs>
-      <path d="M8 12H24L32 38V56Z" fill={`url(#${id})`} />
-      <path d="M56 12H40L32 38V56Z" fill={`url(#${id})`} opacity="0.5" />
-      <path d="M24 12L32 38L40 12" stroke="#0d1012" strokeWidth="1.5" opacity="0.6" />
+      <rect width="64" height="64" rx="16" fill={`url(#${id})`} />
+      <path d="M17 10H47C50.3 10 53 12.7 53 16V34C53 37.3 50.3 40 47 40H39L32 55L25 40H17C13.7 40 11 37.3 11 34V16C11 12.7 13.7 10 17 10Z" fill="#fff" />
+      <path d="M28 24V21.5a4 4 0 0 1 8 0V24" stroke={`url(#${id})`} strokeWidth="2.6" fill="none" />
+      <rect x="25.5" y="24" width="13" height="10" rx="2.5" fill={`url(#${id})`} />
     </>
   );
 }
