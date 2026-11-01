@@ -4,11 +4,12 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { OneTimePreKeyPublic } from '../shared/protocol';
-import type { Envelope, RelayStore, UserRecord } from './relay';
+import type { BackupRecord, Envelope, RelayStore, UserRecord } from './relay';
 
 interface Data {
   users: Record<string, UserRecord>;
   mail: Record<string, Envelope[]>;
+  backups?: Record<string, BackupRecord>;
 }
 
 /** File-backed store for the Node relay (Cloudflare uses Durable Object storage instead). */
@@ -38,6 +39,7 @@ export class Store implements RelayStore {
   deleteUser(handle: string) {
     delete this.data.users[handle];
     delete this.data.mail[handle];
+    delete this.data.backups?.[handle];
     this.changed();
   }
 
@@ -64,6 +66,29 @@ export class Store implements RelayStore {
 
   enqueue(handle: string, env: Envelope) {
     (this.data.mail[handle] ??= []).push(env);
+    this.changed();
+  }
+
+  touch(handle: string) {
+    const u = this.data.users[handle];
+    if (u) {
+      u.lastSeen = Date.now();
+      this.changed();
+    }
+  }
+
+  inactive(before: number): string[] {
+    return Object.entries(this.data.users)
+      .filter(([, u]) => (u.lastSeen ?? u.createdAt) < before)
+      .map(([h]) => h);
+  }
+
+  backup(handle: string): BackupRecord | undefined {
+    return this.data.backups?.[handle];
+  }
+
+  setBackup(handle: string, record: BackupRecord) {
+    (this.data.backups ??= {})[handle] = record;
     this.changed();
   }
 

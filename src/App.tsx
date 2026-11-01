@@ -6,10 +6,12 @@ import { LogoMark } from './components/Logo';
 import { ProfileDialog } from './components/ProfileDialog';
 import { SettingsDialog } from './components/SettingsDialog';
 import { Sidebar } from './components/Sidebar';
-import { UnlockScreen } from './components/UnlockScreen';
+import { AuthScreen } from './components/AuthScreen';
 import { useI18n } from './i18n';
 import { useToast } from './lib/toast';
-import { createVault, eraseVault, openVault, saveVault, type VaultSession } from './lib/vault';
+import { makeBackup, makeRecovery } from './lib/account';
+import { RecoveryDialog } from './components/RecoveryCode';
+import { deriveAccountKeys, deviceId, forgetAccount, markSynced, saveVault, type VaultSession } from './lib/vault';
 import { defaultServerUrl, type ConnStatus } from './net/connection';
 import { Engine, newGroupId, newMessageId } from './net/engine';
 import { usePrefs } from './prefs';
@@ -24,17 +26,28 @@ type Dialog =
   | { kind: 'profile' }
   | { kind: 'contact' }
   | { kind: 'invite' }
+  | { kind: 'recovery' }
   | { kind: 'confirm'; action: 'leave' | 'delete' | 'clear' | 'erase' }
   | null;
 
 const WIDE = '(min-width: 1200px)';
 
+export type SignOutReason = 'lock' | 'erase' | 'replaced' | 'conflict';
+
 export default function App() {
   const [vault, setVault] = useState<{ session: VaultSession; state: ChatState } | null>(null);
-  const notify = useToast();
-  const { t } = useI18n();
+  const [lastOut, setLastOut] = useState<{ handle: string; reason: SignOutReason } | null>(null);
 
-  if (!vault) return <UnlockScreen onReady={(session, state) => setVault({ session, state })} />;
+  if (!vault)
+    return (
+      <AuthScreen
+        signedOut={lastOut}
+        onReady={(session, state) => {
+          setLastOut(null);
+          setVault({ session, state });
+        }}
+      />
+    );
 
   return (
     <ChatApp
@@ -42,8 +55,8 @@ export default function App() {
       initial={vault.state}
       session={vault.session}
       onLocked={(reason) => {
-        setVault(null);
-        if (reason === 'lock') notify(t('toast.locked'));
+        setLastOut({ handle: vault.session.handle, reason });
+        setVault(null); // the sign-in screen explains what happened
       }}
     />
   );
@@ -57,12 +70,13 @@ export interface NetState {
   error?: string;
 }
 
-function ChatApp({ initial, session: initialSession, onLocked }: { initial: ChatState; session: VaultSession; onLocked: (reason: 'lock' | 'erase') => void }) {
+function ChatApp({ initial, session: initialSession, onLocked }: { initial: ChatState; session: VaultSession; onLocked: (reason: SignOutReason) => void }) {
   const { t } = useI18n();
   const { prefs } = usePrefs();
   const notify = useToast();
   const [state, rawDispatch] = useReducer(chatReducer, initial);
-  const [dialog, setDialog] = useState<Dialog>(null);
+  // Accounts without a recovery code are asked to make one right away.
+  const [dialog, setDialog] = useState<Dialog>(() => (initial.account?.recovery ? null : { kind: 'recovery' }));
   const [detailsOpen, setDetailsOpen] = useState(() => window.matchMedia(WIDE).matches);
   const [pane, setPane] = useState<'list' | 'chat'>('list'); // phones only
   const [now, setNow] = useState(() => Date.now());
@@ -103,6 +117,7 @@ function ChatApp({ initial, session: initialSession, onLocked }: { initial: Chat
       } catch {
         notify(t('toast.saveFailed'), 'error');
       }
+      engine.current?.scheduleBackup();
     });
     return saving.current;
   }, [notify, t]);
@@ -110,7 +125,21 @@ function ChatApp({ initial, session: initialSession, onLocked }: { initial: Chat
   /* ---- the network engine ---- */
   const serverUrl = prefs.server || defaultServerUrl();
   useEffect(() => {
-    const e = new Engine({ url: serverUrl, getState: () => stateRef.current, dispatch: act, onStatus: (status, error) => setNet({ status, error }), saveNow });
+    const e = new Engine({
+      url: serverUrl,
+      getState: () => stateRef.current,
+      dispatch: act,
+      onStatus: (status, error) => setNet({ status, error }),
+      saveNow,
+      backup: {
+        device: deviceId(),
+        auth: () => session.current.auth,
+        syncedRev: () => session.current.syncedRev,
+        make: () => makeBackup(session.current, persistable(stateRef.current)),
+        saved: (meta) => markSynced(session.current, meta.rev),
+        conflict: () => onLockedRef.current('conflict'),
+      },
+    });
     engine.current = e;
     e.start();
     return () => {
@@ -125,10 +154,21 @@ function ChatApp({ initial, session: initialSession, onLocked }: { initial: Chat
     return () => window.clearTimeout(id);
   }, [state, pending, saveNow]);
 
+  const onLockedRef = useRef(onLocked);
+  onLockedRef.current = onLocked;
+
   const lock = useCallback(async () => {
     await saveNow();
+    // Upload the latest backup before leaving, so signing in elsewhere picks up where you left off.
+    await Promise.race([engine.current?.syncNow(), new Promise((r) => window.setTimeout(r, 5000))]);
     onLocked('lock');
   }, [onLocked, saveNow]);
+
+  /* ---- signed in somewhere else: this device steps aside ---- */
+  useEffect(() => {
+    if (net.error !== 'replaced') return;
+    void saveNow().then(() => onLockedRef.current('replaced'));
+  }, [net.error, saveNow]);
 
   /* ---- decrypt animation ---- */
   useEffect(() => {
@@ -258,14 +298,31 @@ function ChatApp({ initial, session: initialSession, onLocked }: { initial: Chat
     engine.current?.broadcastProfile();
   };
 
-  const changePassphrase = async (currentPass: string, next: string) => {
-    try {
-      await openVault(currentPass);
-    } catch {
-      return false;
+  const changePassphrase = async (currentPass: string, next: string): Promise<'ok' | 'wrong' | 'offline'> => {
+    const handle = session.current.handle;
+    const check = await deriveAccountKeys(handle, currentPass);
+    if (check.auth !== session.current.auth) return 'wrong';
+    if (!engine.current?.online) return 'offline';
+    const before = session.current;
+    // The server copy and the login key must change together with this device's copy.
+    session.current = { ...(await deriveAccountKeys(handle, next)), syncedRev: before.syncedRev };
+    engine.current.scheduleBackup(0);
+    const ok = await engine.current.syncNow();
+    if (!ok) {
+      session.current = before;
+      return 'offline';
     }
-    session.current = await createVault(next, persistable(stateRef.current));
-    return true;
+    await saveNow();
+    return 'ok';
+  };
+
+  /** A new recovery code: the server learns only its login-key hash and the data key locked with it. */
+  const newRecovery = async () => {
+    const account = stateRef.current.account!;
+    const { code, recovery } = await makeRecovery(session.current.handle, account.dek);
+    act({ type: 'account', account: { ...account, recovery } });
+    await saveNow(); // also schedules the upload
+    return code;
   };
 
   const open = (id: string) => {
@@ -286,7 +343,7 @@ function ChatApp({ initial, session: initialSession, onLocked }: { initial: Chat
       case 'clear':
         return { title: t('confirm.clearTitle'), body: t('confirm.clearBody'), label: t('confirm.clear') };
       case 'erase':
-        return { title: t('unlock.eraseTitle'), body: t('unlock.eraseBody'), label: t('unlock.eraseConfirm') };
+        return { title: t('account.eraseTitle'), body: t('account.eraseBody'), label: t('account.eraseConfirm') };
     }
   };
 
@@ -307,7 +364,7 @@ function ChatApp({ initial, session: initialSession, onLocked }: { initial: Chat
       } catch {
         /* offline: the account stays on the server, but the keys are gone */
       }
-      eraseVault();
+      forgetAccount(session.current.handle);
       onLocked('erase');
     }
   };
@@ -423,10 +480,16 @@ function ChatApp({ initial, session: initialSession, onLocked }: { initial: Chat
       {dialog?.kind === 'settings' && (
         <SettingsDialog
           onChangePassphrase={changePassphrase}
+          recoveryAt={state.account?.recovery?.at}
+          onRecovery={() => setDialog({ kind: 'recovery' })}
           onLock={() => void lock()}
           onErase={() => setDialog({ kind: 'confirm', action: 'erase' })}
           onClose={() => setDialog(null)}
         />
+      )}
+
+      {dialog?.kind === 'recovery' && (
+        <RecoveryDialog handle={state.profile.handle} hasCode={!!state.account?.recovery} onCreate={newRecovery} onClose={() => setDialog(null)} />
       )}
 
       {dialog?.kind === 'confirm' &&

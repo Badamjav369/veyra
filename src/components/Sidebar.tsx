@@ -6,7 +6,7 @@ import { usePrefs } from '../prefs';
 import { activeId, convoMeta, nameOf, type ChatAction } from '../state/chat';
 import type { ChatState } from '../types';
 import type { NetState } from '../App';
-import { EyeIcon, EyeOffIcon, LockIcon, PlusIcon, SearchIcon, SettingsIcon, UserIcon, UserPlusIcon, UsersIcon, WarnIcon } from './Icons';
+import { EyeIcon, EyeOffIcon, LogoutIcon, PlusIcon, SearchIcon, SettingsIcon, UserIcon, UserPlusIcon, UsersIcon, WarnIcon } from './Icons';
 import { Identicon, ProfileAvatar } from './Identicon';
 import { LanguageSwitch } from './LanguageSwitch';
 import { Logo } from './Logo';
@@ -66,7 +66,7 @@ export function Sidebar({ state, dispatch, net, onOpen, onNewGroup, onAddContact
         <div className="sidebar__top-actions">
           <LanguageSwitch />
           <button type="button" className="icon-btn" aria-label={t('vault.lock')} title={t('vault.lock')} onClick={onLock}>
-            <LockIcon />
+            <LogoutIcon />
           </button>
         </div>
       </div>

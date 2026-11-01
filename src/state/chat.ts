@@ -3,6 +3,7 @@ import { TIMER_MS } from '../types';
 
 export type ChatAction =
   | { type: 'section'; section: Section }
+  | { type: 'account'; account: NonNullable<ChatState['account']> }
   | { type: 'open'; id: string }
   | { type: 'send'; convo: string; mid: string; text: string; file?: FileInfo; at: number }
   | { type: 'status'; mid: string; status: MsgStatus }
@@ -362,5 +363,7 @@ export function chatReducer(s: ChatState, a: ChatAction): ChatState {
 
     case 'crypto':
       return { ...s, crypto: a.crypto };
+    case 'account':
+      return { ...s, account: a.account };
   }
 }

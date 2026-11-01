@@ -48,11 +48,30 @@ export type ClientMsg =
   | { t: 'ack'; ids: string[] }
   | { t: 'opks'; opks: OneTimePreKeyPublic[] }
   | { t: 'delete-account'; rid: number }
+  // Encrypted account backup (lets you sign in on another device with handle + password).
+  // `auth` is a key derived from the password; the server keeps only its hash.
+  | { t: 'backup-get'; rid: number; handle: string; auth: string; by?: 'recovery' } // allowed before signing in
+  | {
+      t: 'backup-put';
+      rid: number;
+      blob: string; // the account, encrypted with a random data key
+      device: string;
+      auth?: string; // login key — sets / changes the password
+      wrap?: string; // the data key, encrypted with the password
+      recovery?: { auth: string; wrap: string }; // same, for the recovery code
+    }
   | { t: 'ping' };
+
+/** What the server knows about a backup (never its contents). */
+export interface BackupMeta {
+  rev: number; // increases by one on every upload
+  device: string; // random id of the device that uploaded it
+  at: number;
+}
 
 export type ServerMsg =
   | { t: 'challenge'; nonce: string }
-  | { t: 'ready'; handle: string; opkCount: number }
+  | { t: 'ready'; handle: string; opkCount: number; backup?: BackupMeta }
   | { t: 'error'; rid?: number; code: ErrorCode; message?: string }
   | { t: 'identity'; rid: number; handle: string; ik: string; ikDh: string; ikDhSig: string }
   | { t: 'bundle'; rid: number; bundle: PreKeyBundle }
@@ -60,6 +79,8 @@ export type ServerMsg =
   | { t: 'msg'; id: string; ts: number; body: string }
   | { t: 'opk-low'; count: number }
   | { t: 'deleted'; rid: number }
+  | { t: 'backup'; rid: number; blob: string; wrap?: string; meta: BackupMeta }
+  | { t: 'backup-saved'; rid: number; meta: BackupMeta }
   | { t: 'pong' };
 
 export type ErrorCode =
@@ -71,6 +92,10 @@ export type ErrorCode =
   | 'not_authenticated'
   | 'too_large'
   | 'rate_limited'
+  | 'bad_login' // wrong password (or no such account)
+  | 'no_backup' // the account exists but never uploaded a backup
+  | 'no_recovery' // no recovery code was set up
+  | 'locked_out' // too many wrong passwords; try again later
   | 'replaced'; // you signed in somewhere else
 
 export const authMessage = (kind: 'register' | 'auth', nonce: string, handle: string) => `${kind}|${nonce}|${handle}`;

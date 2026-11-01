@@ -1,4 +1,4 @@
-# SHIVNEE — quiet, end-to-end encrypted chat
+# Veyra — quiet, end-to-end encrypted chat
 
 A soft, dark messenger with **direct** and **group** chats, an **English / Монгол** switch, and a
 small relay server that never sees what you write — or who wrote it.
@@ -24,7 +24,7 @@ and add each other by handle.
 | `npm run server` | Relay server only (port 8787, `PORT=` to change) |
 | `npm run dev:client` | Web app only |
 | `npm start` | Build the web app and serve everything from the relay on port 8787 |
-| `npm test` | Protocol tests (key agreement, ratchet, tampering, sealed sender…) |
+| `npm test` | Protocol tests (key agreement, ratchet, tampering, sealed sender…) and sign-in/backup tests |
 | `npm run build` | Type-check client + server + Worker and build `dist/` |
 | `npm run cf:dev` | Run the Cloudflare version locally (Worker + Durable Object) |
 | `npm run deploy` | Build and deploy to Cloudflare — see [docs/DEPLOY.md](docs/DEPLOY.md) |
@@ -43,6 +43,16 @@ npm run deploy
 ```
 
 Full guide (in Mongolian): [docs/DEPLOY.md](docs/DEPLOY.md)
+
+## Accounts and signing in
+
+Sign in with your **handle + password** on any device. The password is stretched (PBKDF2-SHA-256,
+310k rounds, salted with the handle) and split with HKDF into a **vault key** that encrypts all your
+data and never leaves the device, and a **login key** whose SHA-256 hash is all the server keeps.
+The server also keeps an encrypted copy of your account (it can't open it), so a new device can
+restore your keys and history. Ten wrong passwords lock sign-in for 15 minutes. Restored sessions
+are only used to read; the first message to each person starts a fresh key agreement.
+Signing in on a new device signs out the old one. Vaults from earlier versions are migrated on sign-in.
 
 ## Security model in one screen
 
@@ -81,9 +91,9 @@ server/        relay.ts (relay rules, shared), index.ts (Node HTTP + WebSocket),
 cloudflare/    worker.ts (Cloudflare Worker + Durable Object with SQLite)
 src/net/       connection.ts (WebSocket + signed login), engine.ts (encrypt / decrypt / deliver)
 src/state/     chat.ts (reducer), init.ts (new identity state, vault checks)
-src/lib/       vault.ts (encrypted storage), time, toast, identicons
+src/lib/       vault.ts (password keys + encrypted storage), account.ts (sign-in, backup), time, toast…
 src/components UI
 src/i18n/      en.ts (base) and mn.ts
-tests/         e2ee.test.ts
+tests/         e2ee.test.ts, account.test.ts
 docs/          HOW-IT-WORKS.md, DEPLOY.md
 ```

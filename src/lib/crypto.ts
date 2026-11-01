@@ -38,13 +38,13 @@ export function hex(bytes: Bytes): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** A contact code people can share: shivnee:<handle>:<public key>. */
+/** A contact code people can share: veyra:<handle>:<public key> (older codes start with shivnee:). */
 export function contactCode(handle: string, publicKey: string): string {
-  return `shivnee:${handle}:${publicKey}`;
+  return `veyra:${handle}:${publicKey}`;
 }
 
 export function parseContactCode(code: string): { handle: string; publicKey: string } | null {
-  const m = code.trim().match(/^shivnee:([a-z0-9._-]{2,24}):([A-Za-z0-9+/=]{40,200})$/i);
+  const m = code.trim().match(/^(?:veyra|shivnee):([a-z0-9._-]{2,24}):([A-Za-z0-9+/=]{40,200})$/i);
   if (!m) return null;
   try {
     fromB64(m[2]);

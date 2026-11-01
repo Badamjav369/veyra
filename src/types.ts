@@ -93,6 +93,10 @@ export interface Session {
   pending?: X3dhHeader; // sent along until they reply, so they can build the same session
   initiator: boolean;
   createdAt: number;
+  /** Restored from a backup: only used to read messages already on their way, never to send. */
+  stale?: boolean;
+  /** The previous session's ratchet, kept so late messages from it can still be read. */
+  old?: RatchetState;
 }
 
 export interface CryptoStore {
@@ -123,6 +127,8 @@ export interface ChatState {
   hidePreviews: boolean;
   privacyScreen: boolean;
   toggles: { hideOnBlur: boolean; receipts: boolean; typing: boolean };
+  /** Keys for the server backup: `dek` encrypts it; `recovery` is the data key locked with the recovery code. */
+  account?: { dek: string; recovery?: { auth: string; wrap: string; at: number } };
 }
 
 export const PALETTE = ['#8FD9B6', '#9DB8F2', '#E2B67F', '#C3A8F0', '#E7A3B4', '#7FD1D9', '#D9D27F'];

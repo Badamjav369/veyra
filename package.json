@@ -8,10 +8,10 @@
     "dev": "node scripts/dev.mjs",
     "dev:client": "vite",
     "server": "tsx server/index.ts",
-    "build": "tsc --noEmit && tsc -p server --noEmit && tsc -p cloudflare --noEmit && vite build",
+    "build": "npm run typecheck && vite build",
     "start": "vite build && tsx server/index.ts",
-    "test": "tsx tests/e2ee.test.ts",
-    "typecheck": "tsc --noEmit && tsc -p server --noEmit && tsc -p cloudflare --noEmit",
+    "test": "tsx tests/e2ee.test.ts && tsx tests/account.test.ts",
+    "typecheck": "tsc --noEmit && tsc -p server --noEmit && tsc -p cloudflare --noEmit && tsc -p tests --noEmit",
     "cf:dev": "vite build && wrangler dev",
     "deploy": "npm run build && wrangler deploy"
   },

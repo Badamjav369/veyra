@@ -11,5 +11,5 @@
     "noUnusedLocals": true,
     "types": ["node"]
   },
-  "include": ["./**/*.ts", "../shared/**/*.ts", "../tests/**/*.ts"]
+  "include": ["./**/*.ts", "../shared/**/*.ts"]
 }

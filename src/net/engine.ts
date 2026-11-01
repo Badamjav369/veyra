@@ -22,7 +22,7 @@ import {
   x3dhRespond,
   type InnerEnvelope,
 } from '../../shared/e2ee';
-import type { AppMessage, PreKeyBundle, ServerMsg, Timer, WireFile, WireGroup } from '../../shared/protocol';
+import type { AppMessage, BackupMeta, PreKeyBundle, ServerMsg, Timer, WireFile, WireGroup } from '../../shared/protocol';
 import type { ChatAction } from '../state/chat';
 import { contactOf, isGroupId } from '../state/chat';
 import type { ChatState, Contact, CryptoStore, FileInfo, Group, Session } from '../types';
@@ -36,6 +36,16 @@ export interface EngineDeps {
   onStatus: (status: ConnStatus, error?: string) => void;
   /** Writes the vault now. Called before acknowledging or sending, so a crash can't desync the ratchets. */
   saveNow: () => Promise<void>;
+  /** The encrypted account backup kept on the server (for signing in on other devices). */
+  backup: {
+    device: string;
+    auth: () => string;
+    syncedRev: () => number;
+    make: () => Promise<{ blob: string; wrap: string; recovery?: { auth: string; wrap: string } }>;
+    saved: (meta: BackupMeta) => void;
+    /** Another device changed the account since this one last synced. */
+    conflict: () => void;
+  };
 }
 
 export interface OutgoingText {
@@ -54,6 +64,10 @@ export class Engine {
   private chain: Promise<unknown> = Promise.resolve();
   private inFlight = new Set<string>();
   private lastTyping = 0;
+  private backupDirty = true; // upload once after every sign-in
+  private backupBusy: Promise<void> | null = null;
+  private backupTimer: number | undefined;
+  private blocked = false;
 
   constructor(private d: EngineDeps) {
     const s = d.getState();
@@ -61,7 +75,7 @@ export class Engine {
     this.store = { ...s.crypto, sessions: { ...s.crypto.sessions }, profileShared: { ...s.crypto.profileShared }, opks: [...s.crypto.opks] };
     this.conn = new Connection(d.url, { kind: 'auth', handle: s.profile.handle, signPriv: this.store.identity.sign.priv }, {
       status: (st, err) => this.onStatus(st, err),
-      ready: (info) => this.onReady(info.opkCount),
+      ready: (info) => this.onReady(info.opkCount, info.backup),
       message: (m) => this.onServer(m),
     });
   }
@@ -71,6 +85,7 @@ export class Engine {
   }
 
   stop() {
+    window.clearTimeout(this.backupTimer);
     this.conn.stop();
   }
 
@@ -108,9 +123,55 @@ export class Engine {
     this.d.onStatus(status, error);
   }
 
-  private onReady(opkCount: number) {
+  private onReady(opkCount: number, backup?: BackupMeta) {
+    const b = this.d.backup;
+    if (backup && backup.device !== b.device && backup.rev > b.syncedRev()) {
+      // Someone signed in elsewhere and kept going. Don't overwrite their newer copy.
+      this.blocked = true;
+      this.conn.stop();
+      b.conflict();
+      return;
+    }
     if (opkCount < 20) this.replenish();
     void this.flushPending();
+    void this.flushBackup();
+  }
+
+  /* -------------------------------------------------------------- backup */
+
+  /** Uploads the encrypted backup a little later (changes come in bursts). */
+  scheduleBackup(delay = 2500) {
+    this.backupDirty = true;
+    window.clearTimeout(this.backupTimer);
+    this.backupTimer = window.setTimeout(() => void this.flushBackup(), delay);
+  }
+
+  /** Uploads now if anything changed; waits for an upload already running. True if the server is up to date. */
+  async syncNow(): Promise<boolean> {
+    window.clearTimeout(this.backupTimer);
+    if (this.backupBusy) await this.backupBusy;
+    await this.flushBackup();
+    return !this.backupDirty;
+  }
+
+  private flushBackup(): Promise<void> {
+    if (this.backupBusy) return this.backupBusy;
+    if (!this.backupDirty || this.blocked || !this.online) return Promise.resolve();
+    this.backupDirty = false;
+    const b = this.d.backup;
+    this.backupBusy = (async () => {
+      try {
+        const { blob, wrap, recovery } = await b.make();
+        const r = await this.conn.request<Extract<ServerMsg, { t: 'backup-saved' }>>({ t: 'backup-put', blob, wrap, recovery, device: b.device, auth: b.auth() }, 30_000);
+        b.saved(r.meta);
+      } catch (err) {
+        if (err instanceof ServerError && (err.code === 'offline' || err.code === 'timeout')) this.backupDirty = true; // retried on reconnect
+        else console.warn('backup failed', err);
+      } finally {
+        this.backupBusy = null;
+      }
+    })();
+    return this.backupBusy;
   }
 
   private replenish() {
@@ -155,7 +216,7 @@ export class Engine {
 
   private async ensureSession(handle: string): Promise<Session> {
     const existing = this.store.sessions[handle];
-    if (existing) return existing;
+    if (existing && !existing.stale) return existing;
     const r = await this.conn.request<Extract<ServerMsg, { t: 'bundle' }>>({ t: 'bundle', handle });
     const b: PreKeyBundle = r.bundle;
     if (!verifyBundle(b)) throw new ServerError('bad_signature');
@@ -168,6 +229,7 @@ export class Engine {
       pending: x.header,
       initiator: true,
       createdAt: Date.now(),
+      old: existing?.ratchet, // a restored session: keep it for reading late messages
     };
     this.store.sessions[handle] = session;
     this.persist();
@@ -354,6 +416,16 @@ export class Engine {
       } catch {
         /* maybe they started a new session */
       }
+      // …or it was sent with the session we had before (e.g. on another device).
+      if (!plaintext && existing.old) {
+        try {
+          const r = ratchetDecrypt(existing.old, inner.h, inner.ct);
+          plaintext = r.plaintext;
+          session = { ...existing, old: r.state };
+        } catch {
+          /* no */
+        }
+      }
     }
 
     // 2) A first message (X3DH): build the matching session from our prekeys.
@@ -366,7 +438,14 @@ export class Engine {
         const r = ratchetDecrypt(ratchetInitBob(sk, spk, ad), inner.h, inner.ct);
         plaintext = r.plaintext;
         if (opk) this.store = { ...this.store, opks: this.store.opks.filter((k) => k.id !== opk.id) }; // one-time means one time
-        const fresh: Session = { ik: inner.ik, ikDh: inner.x3dh.ikDh, ratchet: r.state, initiator: false, createdAt: Date.now() };
+        const fresh: Session = {
+          ik: inner.ik,
+          ikDh: inner.x3dh.ikDh,
+          ratchet: r.state,
+          initiator: false,
+          createdAt: Date.now(),
+          old: existing?.ik === inner.ik ? existing.ratchet : undefined,
+        };
         // If we both started at the same moment, the smaller identity key keeps its session.
         const keepMine = existing?.pending && existing.ik === inner.ik && this.store.identity.sign.pub < inner.ik;
         session = keepMine ? existing : fresh;

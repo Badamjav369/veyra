@@ -11,11 +11,15 @@ type Tab = 'general' | 'appearance' | 'security';
 
 export function SettingsDialog({
   onChangePassphrase,
+  recoveryAt,
+  onRecovery,
   onLock,
   onErase,
   onClose,
 }: {
-  onChangePassphrase: (current: string, next: string) => Promise<boolean>;
+  onChangePassphrase: (current: string, next: string) => Promise<'ok' | 'wrong' | 'offline'>;
+  recoveryAt?: number;
+  onRecovery: () => void;
   onLock: () => void;
   onErase: () => void;
   onClose: () => void;
@@ -153,6 +157,17 @@ export function SettingsDialog({
                 />
               </Field>
               <ChangePassphrase onChange={onChangePassphrase} />
+              <div className="pass-change">
+                <span className="label">{t('rc.title')}</span>
+                {recoveryAt ? (
+                  <p className="help">{t('rc.set', { date: new Date(recoveryAt).toLocaleDateString(lang) })}</p>
+                ) : (
+                  <p className="callout callout--warn">{t('rc.missing')}</p>
+                )}
+                <button type="button" className="btn btn--outline" onClick={onRecovery}>
+                  {recoveryAt ? t('rc.new') : t('rc.create')}
+                </button>
+              </div>
               <div className="btn-row">
                 <button type="button" className="btn btn--outline" onClick={onLock}>
                   <LockIcon size={16} />
@@ -216,7 +231,7 @@ function ServerField() {
   );
 }
 
-function ChangePassphrase({ onChange }: { onChange: (current: string, next: string) => Promise<boolean> }) {
+function ChangePassphrase({ onChange }: { onChange: (current: string, next: string) => Promise<'ok' | 'wrong' | 'offline'> }) {
   const { t } = useI18n();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -229,14 +244,14 @@ function ChangePassphrase({ onChange }: { onChange: (current: string, next: stri
     if (next.length < 8) return setMsg({ tone: 'error', text: t('settings.passShort') });
     if (next !== again) return setMsg({ tone: 'error', text: t('settings.passMismatch') });
     setBusy(true);
-    const ok = await onChange(current, next);
+    const result = await onChange(current, next);
     setBusy(false);
-    if (ok) {
+    if (result === 'ok') {
       setCurrent('');
       setNext('');
       setAgain('');
       setMsg({ tone: 'ok', text: t('settings.passChanged') });
-    } else setMsg({ tone: 'error', text: t('settings.passWrong') });
+    } else setMsg({ tone: 'error', text: result === 'wrong' ? t('settings.passWrong') : t('settings.passOffline') });
   };
 
   return (

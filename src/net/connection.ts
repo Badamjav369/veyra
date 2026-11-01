@@ -3,7 +3,7 @@
 
 import { utf8 } from '../../shared/encoding';
 import { signBytes } from '../../shared/e2ee';
-import { authMessage, type ClientMsg, type ErrorCode, type ServerMsg, type UploadBundle } from '../../shared/protocol';
+import { authMessage, type BackupMeta, type ClientMsg, type ErrorCode, type ServerMsg, type UploadBundle } from '../../shared/protocol';
 
 export type ConnStatus = 'connecting' | 'online' | 'offline';
 
@@ -19,7 +19,7 @@ export type Login =
 
 interface Handlers {
   status: (status: ConnStatus, error?: ErrorCode) => void;
-  ready: (info: { handle: string; opkCount: number }) => void;
+  ready: (info: { handle: string; opkCount: number; backup?: BackupMeta }) => void;
   message: (m: ServerMsg) => void;
 }
 
@@ -121,7 +121,7 @@ export class Connection {
       window.clearInterval(this.pingTimer);
       this.pingTimer = window.setInterval(() => this.raw({ t: 'ping' }), 25_000);
       this.setStatus('online');
-      this.on.ready({ handle: m.handle, opkCount: m.opkCount });
+      this.on.ready({ handle: m.handle, opkCount: m.opkCount, backup: m.backup });
       return;
     }
     if (m.t === 'error') {
@@ -202,5 +202,49 @@ export function registerAccount(url: string, handle: string, signPriv: string, b
     });
     const timer = window.setTimeout(() => finish(new ServerError('timeout')), 12_000);
     conn.start();
+  });
+}
+
+/**
+ * Asks the relay for an account's encrypted backup, proving the password with the login key.
+ * Works before signing in (a new device has no keys yet). Rejects with ServerError:
+ * bad_login, not_found, no_backup, locked_out, offline or timeout.
+ */
+export function fetchBackup(url: string, handle: string, auth: string, timeoutMs = 10_000, by?: 'recovery'): Promise<{ blob: string; wrap?: string; meta: BackupMeta }> {
+  return new Promise((resolve, reject) => {
+    let ws: WebSocket;
+    let done = false;
+    const finish = (err: Error | null, value?: { blob: string; wrap?: string; meta: BackupMeta }) => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(timer);
+      try {
+        ws?.close();
+      } catch {
+        /* ignore */
+      }
+      if (err) reject(err);
+      else resolve(value!);
+    };
+    const timer = window.setTimeout(() => finish(new ServerError('timeout')), timeoutMs);
+    try {
+      ws = new WebSocket(url);
+    } catch {
+      finish(new ServerError('offline'));
+      return;
+    }
+    ws.onerror = () => finish(new ServerError('offline'));
+    ws.onclose = () => finish(new ServerError('offline'));
+    ws.onmessage = (ev) => {
+      let m: ServerMsg;
+      try {
+        m = JSON.parse(String(ev.data)) as ServerMsg;
+      } catch {
+        return;
+      }
+      if (m.t === 'challenge') ws.send(JSON.stringify({ t: 'backup-get', rid: 1, handle, auth, by } satisfies ClientMsg));
+      else if (m.t === 'backup') finish(null, { blob: m.blob, wrap: m.wrap, meta: m.meta });
+      else if (m.t === 'error') finish(new ServerError(m.code));
+    };
   });
 }

@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocket, WebSocketServer } from 'ws';
 import { b64, randomBytes, randomId } from '../shared/encoding';
 import type { ServerMsg } from '../shared/protocol';
-import { handleFrame, MAX_FRAME_BYTES, type RelayConn, type RelayHub } from './relay';
+import { handleFrame, MAX_FRAME_BYTES, type RelayConn, type RelayHub, purgeInactive } from './relay';
 import { Store } from './store';
 
 const ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -93,7 +93,10 @@ wss.on('connection', (ws) => {
 setInterval(() => {
   for (const ws of wss.clients) ws.ping();
 }, 30_000);
-setInterval(() => store.purge(MAIL_TTL), 60 * 60 * 1000);
+setInterval(() => {
+  store.purge(MAIL_TTL);
+  purgeInactive(store, console.log);
+}, 60 * 60 * 1000);
 
 for (const sig of ['SIGINT', 'SIGTERM'] as const) {
   process.on(sig, () => {
