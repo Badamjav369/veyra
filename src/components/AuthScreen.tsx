@@ -12,10 +12,10 @@ import { createState } from '../state/init';
 import type { ChatState, Profile } from '../types';
 import { BinaryRain } from './BinaryRain';
 import { EyeIcon, EyeOffIcon, KeyIcon, ShieldIcon, WarnIcon } from './Icons';
-import { LanguageSwitch } from './LanguageSwitch';
 import { LogoMark, LogoShapes } from './Logo';
 import { Modal } from './Modal';
 import { RecoveryCodeView } from './RecoveryCode';
+import { TermsDialog } from './Terms';
 
 interface Props {
   onReady: (session: VaultSession, state: ChatState) => void;
@@ -119,6 +119,8 @@ export function AuthScreen({ onReady, signedOut }: Props) {
   const [busy, setBusy] = useState<SignInStep | 'create' | null>(null);
   const [error, setError] = useState('');
   const [forgot, setForgot] = useState(false);
+  const [agreed, setAgreed] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
 
   // sign in
   const [handle, setHandle] = useState(() => signedOut?.handle ?? accounts[0] ?? '');
@@ -167,7 +169,7 @@ export function AuthScreen({ onReady, signedOut }: Props) {
 
   const handleOk = HANDLE_RE.test(newHandle);
   const strength = pass1.length === 0 ? 'empty' : pass1.length < 8 ? 'short' : pass1.length < 16 ? 'ok' : 'great';
-  const canCreate = displayName.trim() && handleOk && pass1.length >= 8 && pass1 === pass2;
+  const canCreate = displayName.trim() && handleOk && pass1.length >= 8 && pass1 === pass2 && agreed;
 
   const doCreate = async (e: FormEvent) => {
     e.preventDefault();
@@ -259,7 +261,6 @@ export function AuthScreen({ onReady, signedOut }: Props) {
           <span className="logo__word">VEYRA</span>
         </span>
         <div className="unlock__top-right">
-          <LanguageSwitch />
         </div>
       </header>
 
@@ -431,6 +432,16 @@ export function AuthScreen({ onReady, signedOut }: Props) {
               <PassField id="c-pass2" value={pass2} onChange={setPass2} autoComplete="new-password" invalid={!!pass2 && pass1 !== pass2} />
               {pass2 && pass1 !== pass2 && <p className="help is-error">{t('auth.mismatch')}</p>}
 
+              <label className="rc__confirm auth__terms">
+                <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+                <span>
+                  I agree to the{' '}
+                  <button type="button" className="link-btn" onClick={() => setShowTerms(true)}>
+                    Terms of Service
+                  </button>
+                </span>
+              </label>
+
               <p className="callout callout--warn auth__warning">
                 <WarnIcon size={16} />
                 <span>{t('auth.noReset')}</span>
@@ -459,9 +470,15 @@ export function AuthScreen({ onReady, signedOut }: Props) {
           </>
         )}
 
-        <p className="unlock__footer">{t('auth.footer')}</p>
+        <p className="unlock__footer">
+          {t('auth.footer')}{' '}
+          <button type="button" className="link-btn" onClick={() => setShowTerms(true)}>
+            Terms of Service
+          </button>
+        </p>
       </main>
 
+      {showTerms && <TermsDialog onClose={() => setShowTerms(false)} />}
       {forgot && (
         <ForgotDialog
           handle={HANDLE_RE.test(handle) ? handle : ''}

@@ -113,7 +113,7 @@ function MessageItemImpl({ message: m, tick, now, isGroup, showSender, privacySc
   return (
     <div className={`msg ${mine ? 'msg--mine' : 'msg--theirs'}`}>
       {isGroup && !mine && (
-        <span className="msg__avatar">{showSender && sender && <Identicon seed={sender.id} color={sender.color} size={30} />}</span>
+        <span className="msg__avatar">{showSender && sender && <Identicon seed={sender.id} color={sender.color} size={30} photo={sender.avatar} />}</span>
       )}
       <div className="msg__col">
         {isGroup && !mine && showSender && (

@@ -1,11 +1,6 @@
 // English is the base language. Every other language must provide the same keys.
 export const en = {
-  'app.name': 'Veyra',
-  'app.tagline': 'Quiet, end-to-end encrypted chat',
 
-  'lang.label': 'Language',
-  'lang.en': 'English',
-  'lang.mn': 'Монгол',
 
   'unit.s': '{n}s',
   'unit.m': '{n}m',
@@ -105,7 +100,6 @@ export const en = {
 
   // Sidebar
   'vault.open': 'Vault unlocked',
-  'vault.thisDevice': 'this device',
   'vault.lock': 'Sign out',
   'search.label': 'Search conversations',
   'search.placeholder': 'Search on this device',
@@ -184,9 +178,7 @@ export const en = {
   'sys.timerSet': '{name} set disappearing messages to {timer}',
   'sys.timerOff': '{name} turned off disappearing messages',
   'sys.safetyChanged': "{name}'s safety number changed",
-  'sys.joined': '{name} joined · group key updated',
   'sys.groupCreated': 'You created this group',
-  'sys.keyShared': 'Group key shared with {n} members',
   'sys.groupKeyRotated': 'You renewed the keys with every member',
   'sys.sessionReset': 'Session key renewed',
   'sys.verified': 'You verified {name}',
@@ -205,8 +197,6 @@ export const en = {
   'info.protocol': 'Protocol',
   'info.protocolDirect': 'X25519 + Double Ratchet',
   'info.protocolGroup': 'Double Ratchet to each member',
-  'info.keyVersion': 'Key version',
-  'info.devices': 'Their devices',
   'info.members': 'Members',
   'info.safetyNumber': 'Safety number',
   'info.safetyHelp': 'Compare this with {name} in person or over another channel you trust. If it matches, nobody is listening in.',
@@ -232,7 +222,6 @@ export const en = {
   'info.color': 'Color',
   'info.nickname': 'Nickname',
   'info.nicknamePh': 'Only you see this',
-  'info.handle': 'Handle',
   'info.saved': 'Changes saved',
 
   'timer.off': 'Off',
@@ -341,7 +330,6 @@ export const en = {
   'settings.tabGeneral': 'General',
   'settings.tabAppearance': 'Appearance',
   'settings.tabSecurity': 'Security',
-  'settings.language': 'Language',
   'settings.accent': 'Accent color',
   'settings.custom': 'Custom color',
   'settings.textSize': 'Text size',
@@ -397,7 +385,6 @@ export const en = {
   'common.close': 'Close',
   'common.working': 'Working…',
   'toast.saveFailed': "Couldn't save — this device's storage is full.",
-  'toast.locked': 'Signed out',
 
   // Server & network
   'net.online': 'Connected',

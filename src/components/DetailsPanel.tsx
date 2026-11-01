@@ -120,7 +120,7 @@ export function DetailsPanel({ state, dispatch, onClose, onVerify, onInvite, onC
           </form>
         ) : (
           <div className="profile">
-            <Identicon seed={meta.seed} color={meta.color} size={64} shape={isGroup ? 'square' : 'circle'} />
+            <Identicon seed={meta.seed} color={meta.color} size={64} shape={isGroup ? 'square' : 'circle'} photo={isGroup ? undefined : state.contacts[meta.seed]?.avatar} />
             <div className="profile__text">
               <div className="profile__name">
                 <span className="sigil" style={isGroup ? { color: meta.color } : undefined}>
@@ -216,7 +216,7 @@ export function DetailsPanel({ state, dispatch, onClose, onVerify, onInvite, onC
                 if (!c) return null;
                 return (
                   <li key={cid}>
-                    <Identicon seed={cid} color={c.color} size={32} />
+                    <Identicon seed={cid} color={c.color} size={32} photo={c.avatar} />
                     <span className="members__name">{nameOf(c)}</span>
                     <span className={`members__tag ${c.verified ? '' : 'is-warn'}`}>{c.verified ? t('info.tagVerified') : t('info.tagUnverified')}</span>
                     <button

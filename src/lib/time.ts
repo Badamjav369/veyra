@@ -1,6 +1,6 @@
 import type { Lang, Translate } from '../i18n';
 
-const locale = (lang: Lang) => (lang === 'mn' ? 'mn-MN' : 'en-GB');
+const locale = (_lang: Lang) => 'en-GB';
 
 function startOfDay(ms: number): number {
   const d = new Date(ms);

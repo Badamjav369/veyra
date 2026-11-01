@@ -164,6 +164,15 @@ function ChatApp({ initial, session: initialSession, onLocked }: { initial: Chat
     onLocked('lock');
   }, [onLocked, saveNow]);
 
+  /* ---- unread count in the tab title ---- */
+  useEffect(() => {
+    const n = Object.values(state.unread).reduce((a, b) => a + b, 0);
+    document.title = n ? `(${n}) Veyra` : 'Veyra';
+    return () => {
+      document.title = 'Veyra';
+    };
+  }, [state.unread]);
+
   /* ---- signed in somewhere else: this device steps aside ---- */
   useEffect(() => {
     if (net.error !== 'replaced') return;

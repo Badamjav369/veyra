@@ -8,7 +8,6 @@ import type { ChatState } from '../types';
 import type { NetState } from '../App';
 import { EyeIcon, EyeOffIcon, LogoutIcon, PlusIcon, SearchIcon, SettingsIcon, UserIcon, UserPlusIcon, UsersIcon, WarnIcon } from './Icons';
 import { Identicon, ProfileAvatar } from './Identicon';
-import { LanguageSwitch } from './LanguageSwitch';
 import { Logo } from './Logo';
 
 interface Props {
@@ -64,7 +63,6 @@ export function Sidebar({ state, dispatch, net, onOpen, onNewGroup, onAddContact
       <div className="sidebar__top">
         <Logo size={26} />
         <div className="sidebar__top-actions">
-          <LanguageSwitch />
           <button type="button" className="icon-btn" aria-label={t('vault.lock')} title={t('vault.lock')} onClick={onLock}>
             <LogoutIcon />
           </button>
@@ -165,7 +163,7 @@ export function Sidebar({ state, dispatch, net, onOpen, onNewGroup, onAddContact
           const shown = state.hidePreviews ? scramble(preview, id.length * 31 + 7) : preview;
           return (
             <button key={id} type="button" className="convo" aria-current={isActive ? 'true' : undefined} onClick={() => onOpen(id)}>
-              <Identicon seed={meta.seed} color={meta.color} size={42} shape={meta.kind === 'group' ? 'square' : 'circle'} />
+              <Identicon seed={meta.seed} color={meta.color} size={42} shape={meta.kind === 'group' ? 'square' : 'circle'} photo={meta.kind === 'group' ? undefined : state.contacts[meta.seed]?.avatar} />
               <span className="convo__body">
                 <span className="convo__row">
                   <span className="convo__name">

@@ -179,7 +179,7 @@ export function ChatView({ state, dispatch, now, onSend, onTyping, onBack, onTog
         {isGroup ? (
           <IdenticonStack people={meta.members.map((p) => ({ seed: p, color: state.contacts[p]?.color ?? '#93A19C' }))} size={36} />
         ) : (
-          <Identicon seed={meta.seed} color={meta.color} size={42} />
+          <Identicon seed={meta.seed} color={meta.color} size={42} photo={state.contacts[meta.seed]?.avatar} />
         )}
         <div className="chat__title">
           <h1>

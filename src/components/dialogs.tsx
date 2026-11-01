@@ -97,7 +97,7 @@ export function VerifyDialog({
             <i />
           </span>
           <span className="verify__who">
-            <Identicon seed={contact.id} color={contact.color} size={52} />
+            <Identicon seed={contact.id} color={contact.color} size={52} photo={contact.avatar} />
             <small>{contact.handle}</small>
           </span>
         </div>
@@ -203,7 +203,7 @@ function MemberPicker({
       {contacts.map((c) => (
         <label key={c.id} className={`pick ${picked.includes(c.id) ? 'is-picked' : ''}`}>
           <input type="checkbox" checked={picked.includes(c.id)} onChange={() => onToggle(c.id)} />
-          <Identicon seed={c.id} color={c.color} size={32} />
+          <Identicon seed={c.id} color={c.color} size={32} photo={c.avatar} />
           <span className="pick__name">{nameOf(c)}</span>
           <span className={`pick__tag ${c.verified ? '' : 'is-warn'}`}>{c.verified ? t('info.tagVerified') : t('info.tagUnverified')}</span>
         </label>

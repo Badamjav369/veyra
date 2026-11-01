@@ -2619,3 +2619,42 @@ p {
   height: 18px;
   accent-color: var(--accent);
 }
+
+/* Terms of Service */
+.terms {
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  padding-right: 6px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.terms h3 {
+  margin: 18px 0 6px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.terms p,
+.terms ul {
+  margin: 0 0 8px;
+}
+
+.terms ul {
+  padding-left: 20px;
+}
+
+.terms__updated {
+  font-size: 12.5px;
+  color: var(--faint);
+}
+
+.auth__terms {
+  margin-top: 6px;
+}
+
+.auth__terms .link-btn {
+  font-size: inherit;
+}

@@ -10,8 +10,16 @@ interface Props {
 }
 
 /** A small mirrored pixel pattern used instead of profile photos (nothing to leak). */
-export function Identicon({ seed, color, size = 40, shape = 'circle' }: Props) {
+export function Identicon({ seed, color, size = 40, shape = 'circle', photo }: Props & { photo?: string }) {
   const cells = useMemo(() => identiconCells(seed), [seed]);
+  // A photo the contact shared with us (only image data URLs are shown).
+  if (photo && /^data:image\/(png|jpe?g|webp|gif);base64,/.test(photo)) {
+    return (
+      <span className={`identicon identicon--${shape} identicon--photo`} style={{ width: size, height: size }} aria-hidden="true">
+        <img src={photo} alt="" width={size} height={size} />
+      </span>
+    );
+  }
   return (
     <span className={`identicon identicon--${shape}`} style={{ width: size, height: size }} aria-hidden="true">
       <svg viewBox="0 0 5 5" width="50%" height="50%" shapeRendering="crispEdges">

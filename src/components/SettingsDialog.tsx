@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { LANGS, useI18n } from '../i18n';
+import { useI18n } from '../i18n';
 import type { MessageKey } from '../i18n/en';
 import { defaultServerUrl } from '../net/connection';
 import { ACCENT_PRESETS, usePrefs, type Prefs } from '../prefs';
@@ -24,7 +24,7 @@ export function SettingsDialog({
   onErase: () => void;
   onClose: () => void;
 }) {
-  const { t, lang, setLang } = useI18n();
+  const { t, lang } = useI18n();
   const { prefs, setPrefs } = usePrefs();
   const [tab, setTab] = useState<Tab>('general');
 
@@ -57,9 +57,6 @@ export function SettingsDialog({
         <div role="tabpanel" id={`sp-${tab}`} aria-labelledby={`st-${tab}`} className="settings__panel">
           {tab === 'general' && (
             <>
-              <Field label={t('settings.language')}>
-                <Segmented label={t('settings.language')} value={lang} onChange={setLang} options={LANGS.map((l) => ({ value: l.id, label: t(l.labelKey) }))} />
-              </Field>
               <Field label={t('settings.clock')}>
                 <Segmented<Prefs['clock']>
                   label={t('settings.clock')}

@@ -48,7 +48,7 @@ export function ProfileDialog({
   onSave: (p: Profile) => void;
   onClose: () => void;
 }) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const notify = useToast();
   const { prefs } = usePrefs();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -205,7 +205,7 @@ export function ProfileDialog({
           </div>
           <div>
             <dt>{t('profile.created')}</dt>
-            <dd>{new Intl.DateTimeFormat(lang === 'mn' ? 'mn-MN' : 'en-GB', { dateStyle: 'medium' }).format(profile.createdAt)}</dd>
+            <dd>{new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(profile.createdAt)}</dd>
           </div>
         </dl>
 
